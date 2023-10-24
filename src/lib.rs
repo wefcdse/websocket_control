@@ -13,10 +13,10 @@ mod ports;
 pub use port::Port;
 mod port;
 
-pub use error::Errors;
+pub use error::{Errors, ToErrorsResult};
 mod error;
 
-pub use support_type::Side;
+pub use support_type::{ColorId, Event, PeripheralType, Side};
 mod support_type;
 
 mod port_functions;

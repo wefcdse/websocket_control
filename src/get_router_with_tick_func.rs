@@ -1,4 +1,3 @@
-
 use std::{
     error::Error,
     future::Future,
@@ -49,7 +48,7 @@ where
 
             let dt = time.elapsed();
             time = Instant::now();
-
+            log::trace!("tick time:{:?}", dt);
             match tick.call(&mut state, ws.ports(), dt).await {
                 Ok(_) => {}
                 Err(e) => {

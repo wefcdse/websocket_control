@@ -30,6 +30,7 @@ pub async fn ws_handler(
     if let Some(TypedHeader(user_agent)) = &user_agent {
         log::trace!("useragemt: `{}` connected", user_agent.as_str());
     }
+    log::trace!("new connect");
     // dbg!(user_agent);
 
     ws.on_upgrade(|socket: WebSocket| handle_new_websocket(socket_collection, socket))
@@ -51,7 +52,7 @@ async fn handle_new_websocket(socket_collection: SocketCollectionHandle, mut soc
                 if let Some(&"id") = splited.get(0) {
                     // println!("{}", text);
                     if let Some(id) = splited.get(1) {
-                        log::trace!("port {} connected", id);
+                        log::info!("port {} connected", id);
                         let id = id.to_owned().to_owned();
                         let _ = socket_collection.send(id, socket).await;
                         return;

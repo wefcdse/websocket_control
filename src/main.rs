@@ -3,8 +3,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use futures::future::join_all;
-use websocket_control::{Ports, Side};
+use futures::{future::join_all, FutureExt};
+use websocket_control::{ColorId, Event, Ports, Side, ToErrorsResult};
 
 #[tokio::main]
 async fn main() {
@@ -29,12 +29,13 @@ async fn main() {
         // .filter_level(log::LevelFilter::Trace)
         .filter_module(
             "websocket_control::get_router_with_tick_func",
-            log::LevelFilter::Trace,
+            log::LevelFilter::Debug,
         )
-        .filter_module("websocket_control", log::LevelFilter::Trace)
+        .filter_module("websocket_control::get_router", log::LevelFilter::Trace)
+        .filter_module("websocket_control", log::LevelFilter::Debug)
         .init();
 
-    let app = websocket_control::get_router_with_tick_func(tick, 0.);
+    let app = websocket_control::get_router_with_tick_func(tick2, (0, 0, 1, 1, Instant::now()));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 14111));
     axum::Server::bind(&addr)
@@ -48,6 +49,8 @@ async fn tick(
     ports: Ports<'_>,
     dt: Duration,
 ) -> Result<(), websocket_control::Errors> {
+    // tokio::time::sleep(Duration::from_secs_f32((1.0 - dt.as_secs_f32()).max(0.))).await;
+
     // println!("{:?}", dt);
     let mut ports = ports.all_ports();
 
@@ -87,9 +90,77 @@ async fn tick(
         r?;
     }
 
-    tokio::time::sleep(Duration::from_secs_f32(
-        (1.0 / 20. - dt.as_secs_f32()).max(0.),
-    ))
-    .await;
+    let mut futs = Vec::new();
+    for (_id, ws) in &mut ports {
+        let fut = ws.gps_locate();
+        // dbg!(std::mem::size_of_val(&fut));
+        futs.push(fut);
+    }
+    let rtn = futures::future::join_all(futs).await;
+    for r in rtn {
+        r?;
+    }
+
+    Ok(())
+}
+
+async fn tick1(
+    state: &mut (),
+    ports: Ports<'_>,
+    dt: Duration,
+) -> Result<(), websocket_control::Errors> {
+    let mut ports = ports.all_ports();
+    // dbg!(ports.len());
+    for (id, p) in &mut ports {
+        // if let Ok(msg) = p.get_peripheral(Side::Top).await {
+        //     dbg!(msg);
+        // }
+        // dbg!(
+        //     p.monitor_write(Side::Top, 5, 5, ColorId::C04, ColorId::C05, "ads")
+        //         .await
+        // );
+
+        dbg!(p.monitor_get_size(Side::Top).await);
+    }
+    // dbg!();
+    Ok(())
+}
+
+async fn tick2(
+    state: &mut (u16, u16, u16, u16, Instant),
+    mut ports: Ports<'_>,
+    dt: Duration,
+) -> Result<(), websocket_control::Errors> {
+    let (mut sizex, mut sizey, mut x, mut y, mut t) = *state;
+    let mut p1 = ports.get_port("p1").to_errors_result()?;
+    if let Some(evt) = p1.pull_event().await? {
+        match evt {
+            Event::MonitorTouch {
+                side: Side::Top,
+                x: x1,
+                y: y1,
+            } => {
+                if (x, y) == (x1, y1) {
+                    (sizex, sizey) = p1.monitor_get_size(Side::Top).await?.to_errors_result()?;
+                    p1.monitor_write(Side::Top, x, y, ColorId::C16, ColorId::C16, " ")
+                        .await?;
+                    x = rand::random::<u16>() % sizex + 1;
+                    y = rand::random::<u16>() % sizey + 1;
+                    p1.monitor_write(Side::Top, x, y, ColorId::C05, ColorId::C01, " ")
+                        .await?;
+                    t = Instant::now();
+                }
+            }
+            _ => {}
+        }
+    }
+
+    if t.elapsed().as_secs_f32() > 0.5 {
+        p1.monitor_write(Side::Top, x, y, ColorId::C05, ColorId::C01, " ")
+            .await?;
+        t = Instant::now();
+    }
+
+    *state = (sizex, sizey, x, y, t);
     Ok(())
 }

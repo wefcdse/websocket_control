@@ -42,6 +42,7 @@ impl SocketCollection {
         }
     }
     pub fn collect_connections(&mut self) {
+        // dbg!();
         while let Ok((id, ws)) = self.receiver.try_recv() {
             self.data.insert(id, (false, ws));
         }
@@ -52,7 +53,7 @@ impl SocketCollection {
             .drain()
             .filter(|(k, (closed, _ws))| {
                 if *closed {
-                    log::trace!("socket {} closed", k);
+                    log::info!("socket {} closed", k);
                 }
                 !*closed
             })

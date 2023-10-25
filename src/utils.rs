@@ -24,6 +24,17 @@ mod vec2d {
         y: usize,
     }
 
+    impl<T> Vec2d<T> {
+        pub fn size(&self) -> (usize, usize) {
+            (self.x, self.y)
+        }
+        pub fn x(&self) -> usize {
+            self.x
+        }
+        pub fn y(&self) -> usize {
+            self.y
+        }
+    }
     impl<'a, T> Index<usize> for Vec2d<T> {
         type Output = [T];
 
@@ -160,6 +171,102 @@ mod vec2d {
     }
 }
 
+mod local_monitor {
+    use std::time::Duration;
+
+    use tokio::time::sleep;
+
+    use crate::{ColorId, Errors, Port, Side};
+
+    use super::Vec2d;
+
+    pub struct LocalMonitor {
+        data: Vec2d<AsIfPixel>,
+        changed: Vec2d<bool>,
+        wait_time: Duration,
+        wait_count: usize,
+    }
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+    pub struct AsIfPixel {
+        txt: char,
+        background_color: ColorId,
+        text_color: ColorId,
+    }
+
+    impl LocalMonitor {
+        pub fn new(x: usize, y: usize, pix: AsIfPixel) -> Self {
+            Self {
+                data: Vec2d::new_filled_copy(x, y, pix),
+                changed: Vec2d::new_filled_copy(x, y, true),
+                wait_time: Duration::from_secs_f32(0.05),
+                wait_count: 100,
+            }
+        }
+        pub fn size(&self) -> (usize, usize) {
+            self.data.size()
+        }
+        pub fn x(&self) -> usize {
+            self.data.x()
+        }
+        pub fn y(&self) -> usize {
+            self.data.y()
+        }
+    }
+
+    impl LocalMonitor {
+        pub async fn sync(&mut self, side: Side, mut port: Port<'_>) -> Result<usize, Errors> {
+            let mut sleep_counter = 0;
+            let mut count = 0;
+            for ((x, y), changed) in self.changed.iter() {
+                if *changed {
+                    if sleep_counter > self.wait_count {
+                        sleep_counter = 0;
+                        sleep(self.wait_time).await;
+                    }
+
+                    let pixel = self.data[(x, y)];
+                    port.monitor_write(
+                        side,
+                        x as u16,
+                        y as u16,
+                        pixel.background_color,
+                        pixel.text_color,
+                        pixel.txt,
+                    )
+                    .await?;
+                    count += 1;
+                    sleep_counter += 1;
+                }
+            }
+            self.changed = Vec2d::new_filled_copy(self.x(), self.y(), false);
+            Ok(count)
+        }
+
+        pub async fn sync_all(&mut self, side: Side, mut port: Port<'_>) -> Result<(), Errors> {
+            let mut sleep_counter = 0;
+
+            for ((x, y), pixel) in self.data.iter() {
+                if sleep_counter > self.wait_count {
+                    sleep_counter = 0;
+                    sleep(self.wait_time).await;
+                }
+                port.monitor_write(
+                    side,
+                    x as u16,
+                    y as u16,
+                    pixel.background_color,
+                    pixel.text_color,
+                    pixel.txt,
+                )
+                .await?;
+                sleep_counter += 1;
+            }
+            self.changed = Vec2d::new_filled_copy(self.x(), self.y(), false);
+            Ok(())
+        }
+    }
+}
+
 /// reexport some [futures] items for convince
 pub mod futures {
     pub use futures::future::{join_all, FutureExt};
@@ -171,7 +278,7 @@ pub mod futures {
     }
 }
 
-/// reexport some [tokio] items for convince
+/// reexport some [tokio][extern crate tokio] items for convince
 pub mod tokio {
     pub use tokio::main;
     pub use tokio::time::sleep;

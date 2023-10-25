@@ -4,13 +4,14 @@ use axum::extract::ws::{Message, WebSocket};
 
 use crate::error::Errors;
 
+/// a computer craft computer which running the client side lua script
 pub struct Port<'a> {
     pub(crate) inner: &'a mut WebSocket,
     pub(crate) closed: &'a mut bool,
 }
 
 impl<'a> Port<'a> {
-    pub async fn send(&mut self, msg: String) -> Result<(), Errors> {
+    pub(crate) async fn send(&mut self, msg: String) -> Result<(), Errors> {
         let a = tokio::time::timeout(
             Duration::from_secs_f32(0.5),
             self.inner.send(axum::extract::ws::Message::Text(msg)),
@@ -32,7 +33,7 @@ impl<'a> Port<'a> {
             }
         }
     }
-    pub async fn receive(&mut self) -> Result<String, Errors> {
+    pub(crate) async fn receive(&mut self) -> Result<String, Errors> {
         if *self.closed {
             return Err(Errors::WebSocketClosed);
         }

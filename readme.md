@@ -1,10 +1,18 @@
-mod unused;
+# Description
 
-use axum::http::header::DNT;
+a crate which aims to control Computer Craft computers via websocket
+
+# Example
+
+server side rust code
+
+```rust
 use std::time::{Duration, Instant};
 use websocket_control::{ColorId, Event, Ports, Side, ToErrorsResult};
-fn main() {
+#[websocket_control::utils::tokio::main]
+async fn main() {
     env_logger::Builder::new()
+        // .filter_level(log::LevelFilter::Trace)
         .filter_module(
             "websocket_control::get_router_with_tick_func",
             log::LevelFilter::Debug,
@@ -17,7 +25,8 @@ fn main() {
         &([127, 0, 0, 1], 14111).into(),
         tick,
         (0, 0, 1, 1, Instant::now()),
-    );
+    )
+    .await;
 }
 
 async fn tick(
@@ -25,8 +34,6 @@ async fn tick(
     mut ports: Ports<'_>,
     _dt: Duration,
 ) -> Result<(), websocket_control::Errors> {
-    // dbg!(ports.len());
-    // tokio::time::sleep(Duration::from_secs_f32(0.1)).await;
     let (mut sizex, mut sizey, mut x, mut y, mut t) = *state;
     let mut p1 = ports.get_port("p1").to_errors_result()?;
     if let Some(evt) = p1.pull_event().await? {
@@ -61,3 +68,13 @@ async fn tick(
     *state = (sizex, sizey, x, y, t);
     Ok(())
 }
+```
+
+and run this on Computer Craft computer's shell:
+
+```
+ws_control p1
+```
+
+![1](res/1.png)
+![2](res/2.png)

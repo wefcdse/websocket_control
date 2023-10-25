@@ -6,20 +6,27 @@ use axum::{
     Router, TypedHeader,
 };
 use futures::Future;
+use tokio::task::AbortHandle;
 
-use crate::{SocketCollection, SocketCollectionHandle};
+use crate::{SocketCollection, SocketCollectionHandle, SocketCollectionStateHandle};
 
-pub fn get_router<F, Fut>(main: F) -> Router
+pub fn get_router<F, Fut>(main: F) -> (Router, AbortHandle, SocketCollectionStateHandle)
 where
     F: FnOnce(SocketCollection) -> Fut + Send + 'static,
     Fut: Future<Output = ()> + Send + 'static,
 {
     let sc = SocketCollection::new();
+    let socket_collection_state = sc.get_state_handle();
+
     let handle = sc.get_handle();
-    tokio::spawn(main(sc));
-    Router::new()
-        //绑定websocket路由
-        .route("/ws", get(ws_handler).with_state(handle))
+    let abort_handle = tokio::spawn(main(sc)).abort_handle();
+    (
+        Router::new()
+            //绑定websocket路由
+            .route("/ws", get(ws_handler).with_state(handle)),
+        abort_handle,
+        socket_collection_state,
+    )
 }
 
 pub async fn ws_handler(

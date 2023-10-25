@@ -2,6 +2,7 @@ use crate::{error::GpsError, ColorId, Errors, Event, PeripheralType, Port, Side,
 
 // redstone
 impl<'a> Port<'a> {
+    /// get the redstone input signal strength for a specific side.
     pub async fn get_redstone(&mut self, side: Side) -> Result<i32, Errors> {
         self.send(format!("g_rs {}", side.name())).await?;
         let received = self.receive().await?;
@@ -9,6 +10,8 @@ impl<'a> Port<'a> {
         let num = num as i32;
         Ok(num)
     }
+
+    /// set the redstone input signal strength for a specific side.
     pub async fn set_redstone(&mut self, side: Side, level: i32) -> Result<(), Errors> {
         if !(0..=15).contains(&level) {
             return Err(Errors::InvalidRedstoneLevel(level));
@@ -20,6 +23,7 @@ impl<'a> Port<'a> {
 
 // gps
 impl<'a> Port<'a> {
+    /// retrieve the computer or turtles own location.
     pub async fn gps_locate(&mut self) -> Result<(f32, f32, f32), Errors> {
         self.send("gps_loc".to_owned()).await?;
         let received = self.receive().await?;
@@ -39,6 +43,7 @@ impl<'a> Port<'a> {
 
 // event
 impl<'a> Port<'a> {
+    /// pull a event from the computer
     pub async fn pull_event(&mut self) -> Result<Option<Event>, Errors> {
         self.send("evt".to_owned()).await?;
         let msg = self.receive().await?;
@@ -49,8 +54,9 @@ impl<'a> Port<'a> {
     }
 }
 
-// event
+// peripheral
 impl<'a> Port<'a> {
+    /// get the peripheral type for a specific side
     pub async fn get_peripheral(&mut self, side: Side) -> Result<Option<PeripheralType>, Errors> {
         self.send(format!("g_peri {}", side.name())).await?;
         let recv = self.receive().await?;
@@ -69,8 +75,11 @@ impl<'a> Port<'a> {
     }
 }
 
-// event
+// monitor
 impl<'a> Port<'a> {
+    /// write a string to a monitor,
+    /// at x, y,
+    /// with the specific background and text color
     pub async fn monitor_write_string(
         &mut self,
         side: Side,
@@ -91,6 +100,10 @@ impl<'a> Port<'a> {
         Ok(())
     }
 
+    /// write a `char` to a monitor,
+    /// at x, y,
+    /// with the specific background and text color
+    /// the `char`should be ascii
     pub async fn monitor_write(
         &mut self,
         side: Side,
@@ -114,6 +127,8 @@ impl<'a> Port<'a> {
         .await?;
         Ok(())
     }
+
+    /// get the size of a monitor
     pub async fn monitor_get_size(&mut self, side: Side) -> Result<Option<(u16, u16)>, Errors> {
         self.send(format!("m_g_sz {}", side.name())).await?;
         let recv = self.receive().await?;

@@ -1,5 +1,11 @@
 use axum::extract::ws::WebSocket;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicBool, AtomicIsize},
+        Arc,
+    },
+};
 use tokio::sync::mpsc::{self, error::SendError};
 
 use crate::Ports;
@@ -19,9 +25,17 @@ impl SocketCollectionHandle {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct SocketCollectionStateHandle {
+    pub ws_count: Arc<AtomicIsize>,
+    pub ws_added: Arc<AtomicBool>,
+}
+
 #[derive(Debug)]
 pub struct SocketCollection {
     data: HashMap<String, (bool, WebSocket)>,
+    ws_count: Arc<AtomicIsize>,
+    ws_added: Arc<AtomicBool>,
     receiver: mpsc::Receiver<(String, WebSocket)>,
     sender: mpsc::Sender<(String, WebSocket)>,
 }
@@ -32,6 +46,8 @@ impl SocketCollection {
 
         SocketCollection {
             data: HashMap::new(),
+            ws_count: Arc::new(AtomicIsize::new(0)),
+            ws_added: Arc::new(AtomicBool::new(false)),
             receiver: r,
             sender: s,
         }
@@ -41,10 +57,24 @@ impl SocketCollection {
             sender: self.sender.clone(),
         }
     }
+    pub fn get_state_handle(&self) -> SocketCollectionStateHandle {
+        SocketCollectionStateHandle {
+            ws_count: self.ws_count.clone(),
+            ws_added: self.ws_added.clone(),
+        }
+    }
     pub fn collect_connections(&mut self) {
         // dbg!();
         while let Ok((id, ws)) = self.receiver.try_recv() {
-            self.data.insert(id, (false, ws));
+            let add_new = self.data.insert(id, (false, ws)).is_none();
+            if add_new {
+                self.ws_added
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
+                self.ws_count.store(
+                    self.data.len() as isize,
+                    std::sync::atomic::Ordering::Relaxed,
+                );
+            }
         }
     }
     pub fn clean(&mut self) {
@@ -58,6 +88,10 @@ impl SocketCollection {
                 !*closed
             })
             .collect();
+        self.ws_count.store(
+            self.data.len() as isize,
+            std::sync::atomic::Ordering::Relaxed,
+        );
     }
     pub fn ports(&mut self) -> Ports<'_> {
         Ports::new(

@@ -1,10 +1,16 @@
-pub use get_router_with_tick_func::{get_router_with_tick_func, serve_tick_func, UseAsTickFunc};
+//! a crate which aims to control Computer Craft computers
+//! via websocket.
+//!
+//!
+//!
+
+pub use get_router_with_tick_func::serve_tick_func;
 mod get_router_with_tick_func;
 
-pub use get_router::get_router;
+use get_router::get_router;
 mod get_router;
 
-pub use socket_collection::{SocketCollection, SocketCollectionHandle};
+use socket_collection::{SocketCollection, SocketCollectionHandle, SocketCollectionStateHandle};
 mod socket_collection;
 
 pub use ports::Ports;

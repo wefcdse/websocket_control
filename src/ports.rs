@@ -16,6 +16,9 @@ impl<'a> Ports<'a> {
 }
 
 impl<'a> Ports<'a> {
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
     pub fn get_port(&mut self, id: &str) -> Option<Port<'a>> {
         let (closed, inner) = self.inner.remove(id)?;
         Some(Port { inner, closed })

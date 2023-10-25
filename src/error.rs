@@ -7,6 +7,7 @@ use std::{
 
 use stupid_utils::predule::OptionUnwrapOnNoneError;
 
+/// the error this crate uses
 #[derive(Debug)]
 pub enum Errors {
     Axum(axum::Error),
@@ -17,6 +18,7 @@ pub enum Errors {
     ParseIntError(ParseIntError),
     ParseBoolError(ParseBoolError),
     InvalidRedstoneLevel(i32),
+    InvalidChar(char),
     InvalidPeripheralType(String),
     GPSError(GpsError),
     InvalidSideName(String),
@@ -43,6 +45,7 @@ impl Display for Errors {
             Errors::NoneValue => write!(f, "got a uncorrect None value"),
             Errors::InvalidSideName(s) => write!(f, "invalid side name: {}", s),
             Errors::InvalidPeripheralType(p) => write!(f, "invalid peripheral type: {}", p),
+            Errors::InvalidChar(c) => write!(f, "invalid char(should be ascii only): {}", c),
         }
     }
 }

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 use crate::Port;
 
+/// a collection of [Port]
 #[derive(Debug)]
 pub struct Ports<'a> {
     inner: HashMap<&'a str, &'a mut (bool, WebSocket)>,

@@ -3,10 +3,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use futures::{future::join_all, FutureExt};
+use websocket_control::utils::futures::join_all;
 use websocket_control::{ColorId, Event, Ports, Side, ToErrorsResult};
 
-#[tokio::main]
+#[websocket_control::utils::tokio::main]
 async fn main() {
     #[allow(unused)]
     if false {
@@ -35,13 +35,8 @@ async fn main() {
         .filter_module("websocket_control", log::LevelFilter::Debug)
         .init();
 
-    let app = websocket_control::get_router_with_tick_func(tick2, (0, 0, 1, 1, Instant::now()));
-
-    let addr = SocketAddr::from(([127, 0, 0, 1], 14111));
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    websocket_control::serve_tick_func(&([127, 0, 0, 1], 14111).into(), tick3, Instant::now())
+        .await;
 }
 
 async fn tick(
@@ -142,11 +137,11 @@ async fn tick2(
             } => {
                 if (x, y) == (x1, y1) {
                     (sizex, sizey) = p1.monitor_get_size(Side::Top).await?.to_errors_result()?;
-                    p1.monitor_write(Side::Top, x, y, ColorId::C16, ColorId::C16, " ")
+                    p1.monitor_write(Side::Top, x, y, ColorId::C16, ColorId::C16, ' ')
                         .await?;
                     x = rand::random::<u16>() % sizex + 1;
                     y = rand::random::<u16>() % sizey + 1;
-                    p1.monitor_write(Side::Top, x, y, ColorId::C05, ColorId::C01, " ")
+                    p1.monitor_write(Side::Top, x, y, ColorId::C05, ColorId::C01, ' ')
                         .await?;
                     t = Instant::now();
                 }
@@ -156,11 +151,42 @@ async fn tick2(
     }
 
     if t.elapsed().as_secs_f32() > 0.5 {
-        p1.monitor_write(Side::Top, x, y, ColorId::C05, ColorId::C01, " ")
+        p1.monitor_write(Side::Top, x, y, ColorId::C05, ColorId::C01, ' ')
             .await?;
+        tokio::time::sleep(Duration::from_secs(0)).await;
         t = Instant::now();
     }
 
     *state = (sizex, sizey, x, y, t);
+    Ok(())
+}
+
+async fn tick3(
+    state: &mut Instant,
+    mut ports: Ports<'_>,
+    dt: Duration,
+) -> Result<(), websocket_control::Errors> {
+    let mut t = *state;
+    let mut p1 = ports.get_port("p1").to_errors_result()?;
+
+    let mut counter = 0;
+
+    if t.elapsed().as_secs_f32() > 2.0 {
+        let (xmax, ymax) = p1.monitor_get_size(Side::Top).await?.to_errors_result()?;
+        for x in 1..=xmax {
+            for y in 1..=ymax {
+                if counter > 100 {
+                    tokio::time::sleep(Duration::from_secs_f32(0.04)).await;
+                    counter = 0;
+                }
+                counter += 1;
+                p1.monitor_write(Side::Top, x, y, ColorId::C04, ColorId::C12, ' '.into())
+                    .await?;
+            }
+        }
+        t = Instant::now();
+    }
+
+    *state = t;
     Ok(())
 }

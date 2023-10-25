@@ -71,7 +71,7 @@ impl<'a> Port<'a> {
 
 // event
 impl<'a> Port<'a> {
-    pub async fn monitor_write(
+    pub async fn monitor_write_string(
         &mut self,
         side: Side,
         x: u16,
@@ -90,6 +90,30 @@ impl<'a> Port<'a> {
         self.send(text.to_owned()).await?;
         Ok(())
     }
+
+    pub async fn monitor_write(
+        &mut self,
+        side: Side,
+        x: u16,
+        y: u16,
+        background_color: ColorId,
+        text_color: ColorId,
+        text: char,
+    ) -> Result<(), Errors> {
+        if !text.is_ascii() {
+            return Err(Errors::InvalidChar(text));
+        }
+        self.send(format!(
+            "m_w_at_c_sig {side} {x} {y} {c1} {c2} {is_space} {text}",
+            side = side.name(),
+            c1 = background_color.to_number(),
+            c2 = text_color.to_number(),
+            is_space = text == ' ',
+            text = if text == ' ' { '_' } else { text }
+        ))
+        .await?;
+        Ok(())
+    }
     pub async fn monitor_get_size(&mut self, side: Side) -> Result<Option<(u16, u16)>, Errors> {
         self.send(format!("m_g_sz {}", side.name())).await?;
         let recv = self.receive().await?;
@@ -100,5 +124,14 @@ impl<'a> Port<'a> {
         let x = sp.get(0).to_errors_result()?.parse()?;
         let y = sp.get(1).to_errors_result()?.parse()?;
         Ok(Some((x, y)))
+    }
+}
+
+#[test]
+fn special_chars() {
+    for d in 0..127 {
+        let c = char::from_u32(d).unwrap();
+        let str = c.escape_default();
+        println!("{} {} {}", d, c, str);
     }
 }

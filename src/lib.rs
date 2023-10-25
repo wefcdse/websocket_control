@@ -1,4 +1,4 @@
-pub use get_router_with_tick_func::{get_router_with_tick_func, UseAsTickFunc};
+pub use get_router_with_tick_func::{get_router_with_tick_func, serve_tick_func, UseAsTickFunc};
 mod get_router_with_tick_func;
 
 pub use get_router::get_router;
@@ -20,3 +20,5 @@ pub use support_type::{ColorId, Event, PeripheralType, Side};
 mod support_type;
 
 mod port_functions;
+
+pub mod utils;

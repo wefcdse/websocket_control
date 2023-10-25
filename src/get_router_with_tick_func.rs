@@ -1,6 +1,7 @@
 use std::{
     error::Error,
     future::Future,
+    net::SocketAddr,
     time::{Duration, Instant},
 };
 
@@ -57,4 +58,14 @@ where
             }
         }
     })
+}
+
+pub async fn serve_tick_func<F, State>(addr: &SocketAddr, tick: F, state: State) -> ()
+where
+    State: 'static + Send,
+    F: 'static + for<'a> UseAsTickFunc<'a, State>,
+{
+    let app = get_router_with_tick_func(tick, state);
+    let fut = axum::Server::bind(addr).serve(app.into_make_service());
+    fut.await.unwrap();
 }

@@ -1,6 +1,5 @@
 mod unused;
 
-use axum::http::header::DNT;
 use std::time::{Duration, Instant};
 use websocket_control::{ColorId, Event, Ports, Side, ToErrorsResult};
 fn main() {
@@ -25,8 +24,6 @@ async fn tick(
     mut ports: Ports<'_>,
     _dt: Duration,
 ) -> Result<(), websocket_control::Errors> {
-    // dbg!(ports.len());
-    // tokio::time::sleep(Duration::from_secs_f32(0.1)).await;
     let (mut sizex, mut sizey, mut x, mut y, mut t) = *state;
     let mut p1 = ports.get_port("p1").to_errors_result()?;
     if let Some(evt) = p1.pull_event().await? {

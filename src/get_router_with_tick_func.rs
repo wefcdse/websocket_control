@@ -58,7 +58,7 @@ where
             match tick.call(&mut state, ws.ports(), dt).await {
                 Ok(_) => {}
                 Err(e) => {
-                    // log::error!("Error: {}", e);
+                    log::error!("Error: {}", e);
                 }
             }
         }
@@ -74,40 +74,29 @@ where
     State: 'static + Send + Clone,
     F: 'static + for<'a> UseAsTickFunc<'a, State> + Clone,
 {
-    let addr = *addr;
-    let loop1 = async move {
-        let (app, mut main, mut sc) = get_router_with_tick_func(tick.clone(), state.clone());
-        let fut = axum::Server::bind(&addr).serve(app.into_make_service());
-        let mut axum = tokio::spawn(fut).abort_handle();
-
-        loop {
-            tokio::time::sleep(Duration::from_secs_f32(0.5)).await;
-            let inited = sc.ws_added.load(std::sync::atomic::Ordering::Relaxed);
-            if inited {
-                if sc.ws_count.load(std::sync::atomic::Ordering::Relaxed) <= 0 {
-                    log::info!("restart");
-                    axum.abort();
-                    main.abort();
-                    tokio::time::sleep(Duration::from_secs_f32(0.5)).await;
-                    let (app, main1, sc1) = get_router_with_tick_func(tick.clone(), state.clone());
-                    let fut = axum::Server::bind(&addr).serve(app.into_make_service());
-                    let axum1 = tokio::spawn(fut).abort_handle();
-                    main = main1;
-                    axum = axum1;
-                    sc = sc1;
-                }
-            }
-        }
-    };
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap();
-    rt.block_on(loop1);
+
+    let f1 = {
+        let tick = tick.clone();
+        let state = state.clone();
+        async move {
+            let (app, main, sc) = get_router_with_tick_func(tick, state);
+            let fut = axum::Server::bind(&addr).serve(app.into_make_service());
+            let axum = tokio::spawn(fut).abort_handle();
+            (main, axum, sc)
+        }
+    };
+    let (main, axum, sc) = rt.block_on(f1);
+
+    let addr = *addr;
+    let _ = thread::spawn(move || auto_restart(addr, tick, state, rt, main, axum, sc)).join();
 }
 
 fn auto_restart<F, State>(
-    addr: &SocketAddr,
+    addr: SocketAddr,
     tick: F,
     state: State,
     rt: Runtime,

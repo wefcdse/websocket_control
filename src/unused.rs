@@ -1,5 +1,4 @@
 #![allow(unused)]
-
 use std::time::{Duration, Instant};
 
 use futures::future::join_all;

@@ -1,5 +1,5 @@
 [package]
-name = "websocket_control"
+name = "computercraft_websocket_control"
 version = "0.1.0"
 edition = "2021"
 
@@ -11,6 +11,6 @@ tokio = { version = "1.29.1", features = ["full"] }
 stupid_utils = "0.2.4"
 log = "0.4.20"
 futures = "0.3.28"
-env_logger = "0.10.0"
 
+env_logger = "0.10.0"
 rand = "0.8.5"

@@ -11,7 +11,7 @@ mod vec2d {
     /// to avoid too many times of heap allowcation.
     ///
     /// ```
-    /// use websocket_control::utils::Vec2d;
+    /// use computercraft_websocket_control::utils::Vec2d;
     /// let mut v = Vec2d::new_filled_copy(2, 3, 0);
     /// v[(0, 1)] = 2;
     /// assert_eq!(v[0][1], 2);
@@ -167,8 +167,31 @@ mod vec2d {
         for i in v.iter() {
             println!("{:?}", i);
         }
-        vec![4][2];
     }
+}
+
+pub use local_monitor::{AsIfPixel, LocalMonitor};
+
+pub use save_lua_scripts::save_lua_scripts;
+mod save_lua_scripts {
+    use std::{fs, io::Write};
+    /// this function can save the client side lua script to a specific file
+    /// you can unzip the file and place the contents to computer craft's computer's
+    /// script folder
+    pub fn save_lua_scripts(path: &str) {
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(path)
+            .unwrap();
+        let lua = include_bytes!("lua/scripts.zip");
+        file.write_all(lua).unwrap();
+    }
+
+    // #[test]
+    // fn t() {
+    //     save_lua_scripts("a.zip");
+    // }
 }
 
 mod local_monitor {
@@ -180,27 +203,55 @@ mod local_monitor {
 
     use super::Vec2d;
 
+    /// a monitor but stores the pixel localy,
+    /// and can send only changed pixels
+    ///
+    /// x, y starts with 1
+    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct LocalMonitor {
         data: Vec2d<AsIfPixel>,
         changed: Vec2d<bool>,
         wait_time: Duration,
         wait_count: usize,
     }
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-    pub struct AsIfPixel {
-        txt: char,
-        background_color: ColorId,
-        text_color: ColorId,
-    }
 
+    /// as if a pixel, a basic display part of computer craft monitor
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct AsIfPixel {
+        text: char,
+        pub background_color: ColorId,
+        pub text_color: ColorId,
+    }
+    impl AsIfPixel {
+        /// returns `None` if `text` is not within the ASCII range
+        pub fn new(text: char, background_color: ColorId, text_color: ColorId) -> Option<Self> {
+            if !text.is_ascii() {
+                None
+            } else {
+                Some(AsIfPixel {
+                    text,
+                    background_color,
+                    text_color,
+                })
+            }
+        }
+        pub fn text(&self) -> char {
+            self.text
+        }
+    }
+    // creating
     impl LocalMonitor {
         pub fn new(x: usize, y: usize, pix: AsIfPixel) -> Self {
             Self {
                 data: Vec2d::new_filled_copy(x, y, pix),
                 changed: Vec2d::new_filled_copy(x, y, true),
                 wait_time: Duration::from_secs_f32(0.05),
-                wait_count: 100,
+                wait_count: 75,
             }
+        }
+        pub fn resize(&mut self, x: usize, y: usize, pixel: AsIfPixel) {
+            self.data = Vec2d::new_filled_copy(x, y, pixel);
+            self.changed = Vec2d::new_filled_copy(x, y, true);
         }
         pub fn size(&self) -> (usize, usize) {
             self.data.size()
@@ -213,8 +264,35 @@ mod local_monitor {
         }
     }
 
+    // useing
     impl LocalMonitor {
-        pub async fn sync(&mut self, side: Side, mut port: Port<'_>) -> Result<usize, Errors> {
+        /// x, y starts with 1
+        pub fn get(&self, x: usize, y: usize) -> Option<AsIfPixel> {
+            if x > self.x() || y > self.y() {
+                None
+            } else {
+                let x = x - 1;
+                let y = y - 1;
+                Some(self.data[(x, y)])
+            }
+        }
+        /// x, y starts with 1
+        pub fn write(&mut self, x: usize, y: usize, pixel: AsIfPixel) {
+            if x > self.x() || y > self.y() {
+                return;
+            }
+            let x = x - 1;
+            let y = y - 1;
+            let p0 = self.data[(x, y)];
+            if p0 != pixel {
+                self.data[(x, y)] = pixel;
+                self.changed[(x, y)] = true;
+            }
+        }
+    }
+
+    impl LocalMonitor {
+        pub async fn sync(&mut self, side: Side, port: &mut Port<'_>) -> Result<usize, Errors> {
             let mut sleep_counter = 0;
             let mut count = 0;
             for ((x, y), changed) in self.changed.iter() {
@@ -227,11 +305,11 @@ mod local_monitor {
                     let pixel = self.data[(x, y)];
                     port.monitor_write(
                         side,
-                        x as u16,
-                        y as u16,
+                        x + 1,
+                        y + 1,
                         pixel.background_color,
                         pixel.text_color,
-                        pixel.txt,
+                        pixel.text,
                     )
                     .await?;
                     count += 1;
@@ -252,11 +330,11 @@ mod local_monitor {
                 }
                 port.monitor_write(
                     side,
-                    x as u16,
-                    y as u16,
+                    x + 1,
+                    y + 1,
                     pixel.background_color,
                     pixel.text_color,
-                    pixel.txt,
+                    pixel.text,
                 )
                 .await?;
                 sleep_counter += 1;
@@ -267,7 +345,9 @@ mod local_monitor {
     }
 }
 
-/// reexport some [futures] items for convince
+/// re-export some [futures] items for convince
+///
+/// [futures]: https://crates.io/crates/futures
 pub mod futures {
     pub use futures::future::{join_all, FutureExt};
     pub use futures::TryFutureExt;
@@ -278,7 +358,9 @@ pub mod futures {
     }
 }
 
-/// reexport some [tokio][extern crate tokio] items for convince
+/// re-export some [tokio] items for convince
+///
+/// [tokio]: https://crates.io/crates/tokio
 pub mod tokio {
     pub use tokio::main;
     pub use tokio::time::sleep;

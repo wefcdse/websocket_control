@@ -1,6 +1,6 @@
 use crate::{Errors, ToErrorsResult};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Side {
     Top,
     Bottom,
@@ -38,7 +38,7 @@ impl TryFrom<&str> for Side {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Event {
     Key { keycode: u16, hold: bool },
     KeyUp { keycode: u16 },
@@ -101,7 +101,7 @@ impl TryFrom<String> for Event {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PeripheralType {
     Monitor,
     Modem,
@@ -140,7 +140,7 @@ impl TryFrom<&str> for PeripheralType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ColorId {
     C01 = 0,
     C02,
@@ -160,7 +160,35 @@ pub enum ColorId {
     C16,
 }
 impl ColorId {
-    pub(crate) fn to_number(&self) -> u16 {
+    pub fn to_number(&self) -> u16 {
         1 << *self as u8
+    }
+
+    pub fn from_number_overflow(num: u32) -> ColorId {
+        let num = num % 16;
+        let num = num as u8;
+        ColorId::from_number_or_panic(num)
+    }
+
+    fn from_number_or_panic(num: u8) -> ColorId {
+        match num {
+            0 => ColorId::C01,
+            1 => ColorId::C02,
+            2 => ColorId::C03,
+            3 => ColorId::C04,
+            4 => ColorId::C05,
+            5 => ColorId::C06,
+            6 => ColorId::C07,
+            7 => ColorId::C08,
+            8 => ColorId::C09,
+            9 => ColorId::C10,
+            10 => ColorId::C11,
+            11 => ColorId::C12,
+            12 => ColorId::C13,
+            13 => ColorId::C14,
+            14 => ColorId::C15,
+            15 => ColorId::C16,
+            _ => panic!(),
+        }
     }
 }

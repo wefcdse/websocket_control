@@ -8,9 +8,9 @@ server side rust code
 
 ```rust
 use std::time::Duration;
-use websocket_control::{ColorId, Event, Ports, Side, ToErrorsResult};
+use computercraft_websocket_control::{ColorId, Event, Ports, Side, ToErrorsResult};
 fn main() {
-    websocket_control::serve_tick_func(&([127, 0, 0, 1], 14111).into(), tick, (0, 0, 1, 1));
+    computercraft_websocket_control::serve_tick_func(&([127, 0, 0, 1], 14111).into(), tick, (0, 0, 1, 1));
 }
 
 async fn tick(

@@ -83,8 +83,8 @@ impl<'a> Port<'a> {
     pub async fn monitor_write_string(
         &mut self,
         side: Side,
-        x: u16,
-        y: u16,
+        x: usize,
+        y: usize,
         background_color: ColorId,
         text_color: ColorId,
         text: &str,
@@ -107,8 +107,8 @@ impl<'a> Port<'a> {
     pub async fn monitor_write(
         &mut self,
         side: Side,
-        x: u16,
-        y: u16,
+        x: usize,
+        y: usize,
         background_color: ColorId,
         text_color: ColorId,
         text: char,
@@ -129,7 +129,7 @@ impl<'a> Port<'a> {
     }
 
     /// get the size of a monitor
-    pub async fn monitor_get_size(&mut self, side: Side) -> Result<Option<(u16, u16)>, Errors> {
+    pub async fn monitor_get_size(&mut self, side: Side) -> Result<Option<(usize, usize)>, Errors> {
         self.send(format!("m_g_sz {}", side.name())).await?;
         let recv = self.receive().await?;
         if recv == "none" {

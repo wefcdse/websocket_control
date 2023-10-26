@@ -2,7 +2,12 @@
 name = "computercraft_websocket_control"
 version = "0.1.0"
 edition = "2021"
-
+authors = ["wefcdse"]
+description = "a crate which aims to control Computer Craft computers via websocket"
+repository = ""
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+keywords = ["utils", "minecraft", "websocket", "computer craft"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -12,5 +17,10 @@ stupid_utils = "0.2.4"
 log = "0.4.20"
 futures = "0.3.28"
 
-env_logger = "0.10.0"
-rand = "0.8.5"
+[dev-dependencies]
+env_logger = { version = "0.10.0" }
+rand = { version = "0.8.5" }
+
+[[example]]
+name = "random_line"
+path = "examples/random_line.rs"

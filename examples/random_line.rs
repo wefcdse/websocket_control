@@ -1,6 +1,3 @@
-#[cfg(never)]
-mod unused;
-
 use computercraft_websocket_control::{
     serve_tick_func,
     utils::{AsIfPixel, LocalMonitor},
@@ -10,11 +7,14 @@ use std::time::Duration;
 fn main() {
     env_logger::Builder::new()
         .filter_module(
-            "websocket_control::get_router_with_tick_func",
+            "computercraft_websocket_control::get_router_with_tick_func",
             log::LevelFilter::Debug,
         )
-        .filter_module("websocket_control::get_router", log::LevelFilter::Trace)
-        .filter_module("websocket_control", log::LevelFilter::Debug)
+        .filter_module(
+            "computercraft_websocket_control::get_router",
+            log::LevelFilter::Trace,
+        )
+        .filter_module("computercraft_websocket_control", log::LevelFilter::Debug)
         .init();
 
     serve_tick_func(

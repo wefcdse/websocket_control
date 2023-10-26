@@ -1,15 +1,15 @@
 #![allow(unused)]
 use std::time::{Duration, Instant};
 
+use computercraft_websocket_control::{ColorId, Ports, Side, ToErrorsResult};
 use futures::future::join_all;
 use tokio::time::sleep;
-use websocket_control::{ColorId, Ports, Side, ToErrorsResult};
 
 async fn tick(
     state: &mut f32,
     ports: Ports<'_>,
     dt: Duration,
-) -> Result<(), websocket_control::Errors> {
+) -> Result<(), computercraft_websocket_control::Errors> {
     // tokio::time::sleep(Duration::from_secs_f32((1.0 - dt.as_secs_f32()).max(0.))).await;
 
     // println!("{:?}", dt);
@@ -69,7 +69,7 @@ async fn tick1(
     state: &mut (),
     ports: Ports<'_>,
     dt: Duration,
-) -> Result<(), websocket_control::Errors> {
+) -> Result<(), computercraft_websocket_control::Errors> {
     let mut ports = ports.all_ports();
     // dbg!(ports.len());
     for (id, p) in &mut ports {
@@ -91,7 +91,7 @@ async fn tick3(
     state: &mut Instant,
     mut ports: Ports<'_>,
     dt: Duration,
-) -> Result<(), websocket_control::Errors> {
+) -> Result<(), computercraft_websocket_control::Errors> {
     dbg!(ports.len());
     sleep(Duration::from_secs_f32(1.0)).await;
     let mut t = *state;
@@ -118,3 +118,5 @@ async fn tick3(
     *state = t;
     Ok(())
 }
+
+fn main() {}

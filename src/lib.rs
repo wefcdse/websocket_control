@@ -22,7 +22,7 @@ mod port;
 pub use error::{Errors, ToErrorsResult};
 mod error;
 
-pub use support_type::{ColorId, Event, PeripheralType, Side};
+pub use support_type::{ColorId, Direction, Event, PeripheralType, Side};
 mod support_type;
 
 mod port_functions;

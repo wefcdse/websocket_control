@@ -1,3 +1,8 @@
+/// run with `cargo run --example random_line`
+///
+/// in minecraft:
+/// place a monitor on the top of a computer
+/// run `ws_control p1 14111`
 use computercraft_websocket_control::{
     serve_tick_func,
     utils::{AsIfPixel, LocalMonitor},
@@ -20,11 +25,7 @@ fn main() {
     serve_tick_func(
         &([127, 0, 0, 1], 14111).into(),
         tick,
-        LocalMonitor::new(
-            0,
-            0,
-            AsIfPixel::new(' ', ColorId::C04, ColorId::C02).unwrap(),
-        ),
+        LocalMonitor::new(0, 0, AsIfPixel::colored_whitespace(ColorId::Orange)),
     );
 }
 
@@ -34,21 +35,13 @@ async fn tick(state: &mut LocalMonitor, mut ports: Ports<'_>, _dt: Duration) -> 
 
     let (size_x, size_y) = p1.monitor_get_size(Side::Top).await?.to_errors_result()?;
     if state.size() != (size_x, size_y) {
-        let pixel = AsIfPixel::new(' ', ColorId::C06, ColorId::C02).unwrap();
+        let pixel = AsIfPixel::new(' ', ColorId::Lime, ColorId::Orange).unwrap();
         state.resize(size_x, size_y, pixel);
     }
 
-    // let y = rand::random::<usize>() % size_y + 1;
     let y = (size_y + 1) / 2;
     for x in 1..size_x + 1 {
-        let c1 = ColorId::from_number_overflow(
-            (state
-                .get(1, y)
-                .to_errors_result()?
-                .background_color
-                .to_number()
-                + 1) as u32,
-        );
+        let c1 = ColorId::from_number_overflow(rand::random());
         let c2 = ColorId::from_number_overflow(rand::random());
         let text = char::from_u32(rand::random::<u32>() % 26 + 65).unwrap();
 
@@ -56,8 +49,4 @@ async fn tick(state: &mut LocalMonitor, mut ports: Ports<'_>, _dt: Duration) -> 
     }
 
     Ok(())
-}
-#[test]
-fn a() {
-    dbg!('a' as u32);
 }

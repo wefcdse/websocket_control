@@ -1,4 +1,4 @@
-pub use vec2d::Vec2d;
+pub use vec2d::{IterIndex, Vec2d};
 mod vec2d {
     use std::{
         fmt::{Debug, Display},
@@ -71,11 +71,11 @@ mod vec2d {
         }
     }
 
-    impl<T: Display> Display for Vec2d<T> {
+    impl<T: Debug> Display for Vec2d<T> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             for y in 0..self.y {
                 for x in 0..self.x {
-                    write!(f, "{} ", self[(x, y)])?;
+                    write!(f, "{:?}\t", self[(x, y)])?;
                 }
                 writeln!(f, "")?;
             }
@@ -152,6 +152,34 @@ mod vec2d {
                 .enumerate()
                 .map(move |(idx, value)| ((idx / y, idx % y), value))
         }
+
+        pub fn iter_index(&self) -> IterIndex {
+            IterIndex {
+                now: 0,
+                len: self.inner.len(),
+                y: self.y(),
+            }
+        }
+    }
+
+    #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+    pub struct IterIndex {
+        now: usize,
+        len: usize,
+        y: usize,
+    }
+    impl Iterator for IterIndex {
+        type Item = (usize, usize);
+
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.now < self.len {
+                let idx = self.now;
+                self.now += 1;
+                Some((idx / self.y, idx % self.y))
+            } else {
+                None
+            }
+        }
     }
 
     #[test]
@@ -176,7 +204,8 @@ pub use save_lua_scripts::save_lua_scripts;
 mod save_lua_scripts {
     use std::{fs, io::Write};
     /// this function can save the client side lua script to a specific file
-    /// you can unzip the file and place the contents to computer craft's computer's
+    ///
+    /// unzip the file and place the contents to computer craft's computer's
     /// script folder
     pub fn save_lua_scripts(path: &str) {
         let mut file = fs::OpenOptions::new()
@@ -184,7 +213,7 @@ mod save_lua_scripts {
             .create_new(true)
             .open(path)
             .unwrap();
-        let lua = include_bytes!("lua/scripts.zip");
+        let lua = include_bytes!("lua/script.zip");
         file.write_all(lua).unwrap();
     }
 
@@ -199,7 +228,7 @@ mod local_monitor {
 
     use tokio::time::sleep;
 
-    use crate::{ColorId, Errors, Port, Side};
+    use crate::{ColorId, Direction, Errors, Port, Side};
 
     use super::Vec2d;
 
@@ -224,7 +253,11 @@ mod local_monitor {
     }
     impl AsIfPixel {
         /// returns `None` if `text` is not within the ASCII range
-        pub fn new(text: char, background_color: ColorId, text_color: ColorId) -> Option<Self> {
+        pub const fn new(
+            text: char,
+            background_color: ColorId,
+            text_color: ColorId,
+        ) -> Option<Self> {
             if !text.is_ascii() {
                 None
             } else {
@@ -235,15 +268,22 @@ mod local_monitor {
                 })
             }
         }
+        pub const fn colored_whitespace(color: ColorId) -> Self {
+            AsIfPixel {
+                text: ' ',
+                background_color: color,
+                text_color: color,
+            }
+        }
         pub fn text(&self) -> char {
             self.text
         }
     }
     // creating
     impl LocalMonitor {
-        pub fn new(x: usize, y: usize, pix: AsIfPixel) -> Self {
+        pub fn new(x: usize, y: usize, pixel: AsIfPixel) -> Self {
             Self {
-                data: Vec2d::new_filled_copy(x, y, pix),
+                data: Vec2d::new_filled_copy(x, y, pixel),
                 changed: Vec2d::new_filled_copy(x, y, true),
                 wait_time: Duration::from_secs_f32(0.05),
                 wait_count: 75,
@@ -278,7 +318,7 @@ mod local_monitor {
         }
         /// x, y starts with 1
         pub fn write(&mut self, x: usize, y: usize, pixel: AsIfPixel) {
-            if x > self.x() || y > self.y() {
+            if x > self.x() || y > self.y() || x == 0 || y == 0 {
                 return;
             }
             let x = x - 1;
@@ -289,10 +329,74 @@ mod local_monitor {
                 self.changed[(x, y)] = true;
             }
         }
+
+        pub fn clear_with(&mut self, color: ColorId) {
+            for x in 1..=self.x() {
+                for y in 1..=self.y() {
+                    let pixel = AsIfPixel::colored_whitespace(color);
+                    self.write(x, y, pixel);
+                }
+            }
+        }
+
+        /// write a [str], ignore non-ASCII chars
+        pub fn write_str(
+            &mut self,
+            x: usize,
+            y: usize,
+            direction: Direction,
+            text: &str,
+            background_color: ColorId,
+            text_color: ColorId,
+        ) {
+            let (dx, dy) = direction.to_dxdy();
+            let (size_x, size_y) = self.size();
+            let (size_x, size_y) = (size_x as isize, size_y as isize);
+
+            let mut now_x = x as isize;
+            let mut now_y = y as isize;
+            #[allow(unused)]
+            let (x, y) = ((), ());
+
+            for c in text.chars() {
+                let pixel = if let Some(p) = AsIfPixel::new(c, background_color, text_color) {
+                    p
+                } else {
+                    continue;
+                };
+                self.write(now_x as usize, now_y as usize, pixel);
+                now_x += dx;
+                now_y += dy;
+                if now_x <= 0 || now_x > size_x || now_y <= 0 || now_y > size_y {
+                    return;
+                }
+            }
+        }
     }
 
     impl LocalMonitor {
         pub async fn sync(&mut self, side: Side, port: &mut Port<'_>) -> Result<usize, Errors> {
+            let mut count = 0;
+
+            let mut pixels = Vec::new();
+
+            for ((x, y), changed) in self.changed.iter() {
+                if *changed {
+                    let pixel = self.data[(x, y)];
+
+                    pixels.push((x + 1, y + 1, pixel));
+
+                    count += 1;
+                }
+            }
+
+            port.monitor_write_multi(side, &pixels).await?;
+
+            self.changed = Vec2d::new_filled_copy(self.x(), self.y(), false);
+            Ok(count)
+        }
+
+        async fn _sync(&mut self, side: Side, port: &mut Port<'_>) -> Result<usize, Errors> {
             let mut sleep_counter = 0;
             let mut count = 0;
             for ((x, y), changed) in self.changed.iter() {

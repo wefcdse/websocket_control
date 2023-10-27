@@ -2,56 +2,66 @@
 
 a crate which aims to control Computer Craft computers via websocket
 
+# Usage
+
+use [utils::save_lua_scripts](todo!()) function can save the client side lua script to a specific file
+
+unzip the file and place the contents to computer craft's computer's
+script folder.
+
+write rust code
+
+run script on computer craft computer's terminal
+
 # Example
+
+more examples [here](https://github.com/wefcdse/websocket_control/tree/master/examples)
 
 server side rust code
 
 ```rust
+use computercraft_websocket_control::{
+    serve_tick_func,
+    utils::{AsIfPixel, LocalMonitor},
+    ColorId, Errors, Ports, Side, ToErrorsResult,
+};
 use std::time::Duration;
-use computercraft_websocket_control::{ColorId, Event, Ports, Side, ToErrorsResult};
 fn main() {
-    computercraft_websocket_control::serve_tick_func(&([127, 0, 0, 1], 14111).into(), tick, (0, 0, 1, 1));
+    serve_tick_func(
+        &([127, 0, 0, 1], 14111).into(),
+        tick,
+        LocalMonitor::new(0, 0, AsIfPixel::colored_whitespace(ColorId::Orange)),
+    );
 }
 
-async fn tick(
-    state: &mut (u16, u16, u16, u16),
-    mut ports: Ports<'_>,
-    _dt: Duration,
-) -> Result<(), websocket_control::Errors> {
-    let (mut sizex, mut sizey, mut x, mut y) = *state;
+async fn tick(state: &mut LocalMonitor, mut ports: Ports<'_>, _dt: Duration) -> Result<(), Errors> {
     let mut p1 = ports.get_port("p1").to_errors_result()?;
-    p1.monitor_write(Side::Top, x, y, ColorId::C05, ColorId::C01, ' ')
-        .await?;
-    if let Some(evt) = p1.pull_event().await? {
-        match evt {
-            Event::MonitorTouch {
-                side: Side::Top,
-                x: x1,
-                y: y1,
-            } => {
-                if (x, y) == (x1, y1) {
-                    (sizex, sizey) = p1.monitor_get_size(Side::Top).await?.to_errors_result()?;
-                    p1.monitor_write(Side::Top, x, y, ColorId::C16, ColorId::C16, ' ')
-                        .await?;
-                    x = rand::random::<u16>() % sizex + 1;
-                    y = rand::random::<u16>() % sizey + 1;
-                    p1.monitor_write(Side::Top, x, y, ColorId::C05, ColorId::C01, ' ')
-                        .await?;
-                }
-            }
-            _ => {}
-        }
+    state.sync(Side::Top, &mut p1).await?;
+
+    let (size_x, size_y) = p1.monitor_get_size(Side::Top).await?.to_errors_result()?;
+    if state.size() != (size_x, size_y) {
+        let pixel = AsIfPixel::new(' ', ColorId::Lime, ColorId::Orange).unwrap();
+        state.resize(size_x, size_y, pixel);
     }
 
-    *state = (sizex, sizey, x, y);
+    let y = (size_y + 1) / 2;
+    for x in 1..size_x + 1 {
+        let c1 = ColorId::from_number_overflow(rand::random());
+        let c2 = ColorId::from_number_overflow(rand::random());
+        let text = char::from_u32(rand::random::<u32>() % 26 + 65).unwrap();
+
+        state.write(x, y, AsIfPixel::new(text, c1, c2).unwrap());
+    }
+
     Ok(())
 }
+
 ```
 
 and run this on Computer Craft computer's shell:
 
 ```
-ws_control p1
+ws_control p1 14111
 ```
 
 ![1](res/1.png)

@@ -142,22 +142,22 @@ impl TryFrom<&str> for PeripheralType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ColorId {
-    C01 = 0,
-    C02,
-    C03,
-    C04,
-    C05,
-    C06,
-    C07,
-    C08,
-    C09,
-    C10,
-    C11,
-    C12,
-    C13,
-    C14,
-    C15,
-    C16,
+    White = 0,
+    Orange,
+    Magenta,
+    LightBlue,
+    Yellow,
+    Lime,
+    Pink,
+    Gray,
+    LightGray,
+    Cyan,
+    Purple,
+    Blue,
+    Brown,
+    Green,
+    Red,
+    Black,
 }
 impl ColorId {
     pub fn to_number(&self) -> u16 {
@@ -172,23 +172,41 @@ impl ColorId {
 
     fn from_number_or_panic(num: u8) -> ColorId {
         match num {
-            0 => ColorId::C01,
-            1 => ColorId::C02,
-            2 => ColorId::C03,
-            3 => ColorId::C04,
-            4 => ColorId::C05,
-            5 => ColorId::C06,
-            6 => ColorId::C07,
-            7 => ColorId::C08,
-            8 => ColorId::C09,
-            9 => ColorId::C10,
-            10 => ColorId::C11,
-            11 => ColorId::C12,
-            12 => ColorId::C13,
-            13 => ColorId::C14,
-            14 => ColorId::C15,
-            15 => ColorId::C16,
+            0 => ColorId::White,
+            1 => ColorId::Orange,
+            2 => ColorId::Magenta,
+            3 => ColorId::LightBlue,
+            4 => ColorId::Yellow,
+            5 => ColorId::Lime,
+            6 => ColorId::Pink,
+            7 => ColorId::Gray,
+            8 => ColorId::LightGray,
+            9 => ColorId::Cyan,
+            10 => ColorId::Purple,
+            11 => ColorId::Blue,
+            12 => ColorId::Brown,
+            13 => ColorId::Green,
+            14 => ColorId::Red,
+            15 => ColorId::Black,
             _ => panic!(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Direction {
+    PosX,
+    PosY,
+    NegX,
+    NegY,
+}
+impl Direction {
+    pub fn to_dxdy(&self) -> (isize, isize) {
+        match self {
+            Direction::PosX => (1, 0),
+            Direction::PosY => (0, 1),
+            Direction::NegX => (-1, 0),
+            Direction::NegY => (0, -1),
         }
     }
 }

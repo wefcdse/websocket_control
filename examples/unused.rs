@@ -108,8 +108,15 @@ async fn tick3(
                     counter = 0;
                 }
                 counter += 1;
-                p1.monitor_write(Side::Top, x, y, ColorId::C04, ColorId::C12, ' '.into())
-                    .await?;
+                p1.monitor_write(
+                    Side::Top,
+                    x,
+                    y,
+                    ColorId::LightBlue,
+                    ColorId::Blue,
+                    ' '.into(),
+                )
+                .await?;
             }
         }
         t = Instant::now();

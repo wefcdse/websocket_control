@@ -1,4 +1,7 @@
-use crate::{error::GpsError, ColorId, Errors, Event, PeripheralType, Port, Side, ToErrorsResult};
+use crate::{
+    error::GpsError, utils::AsIfPixel, ColorId, Errors, Event, PeripheralType, Port, Side,
+    ToErrorsResult,
+};
 
 // redstone
 impl<'a> Port<'a> {
@@ -123,6 +126,35 @@ impl<'a> Port<'a> {
             c2 = text_color.to_number(),
             is_space = text == ' ',
             text = if text == ' ' { '_' } else { text }
+        ))
+        .await?;
+        Ok(())
+    }
+
+    pub async fn monitor_write_multi(
+        &mut self,
+        side: Side,
+        pixels: &[(usize, usize, AsIfPixel)],
+    ) -> Result<(), Errors> {
+        let mut s = String::new();
+        for (x, y, pixel) in pixels {
+            let cmd = format!(
+                " {x} {y} {c1} {c2} {is_space} {text}",
+                c1 = pixel.background_color.to_number(),
+                c2 = pixel.text_color.to_number(),
+                is_space = pixel.text() == ' ',
+                text = if pixel.text() == ' ' {
+                    '_'
+                } else {
+                    pixel.text()
+                }
+            );
+            s += &cmd;
+        }
+        self.send(format!(
+            "msm {count} {side}{s}",
+            count = pixels.len(),
+            side = side.name(),
         ))
         .await?;
         Ok(())

@@ -20,7 +20,12 @@ futures = "0.3.28"
 [dev-dependencies]
 env_logger = { version = "0.10.0" }
 rand = { version = "0.8.5" }
+stupid_utils = "*"
 
 [[example]]
 name = "random_line"
 path = "examples/random_line.rs"
+
+[[example]]
+name = "minesweeper"
+path = "examples/minesweeper.rs"

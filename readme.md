@@ -15,6 +15,11 @@ run script on computer craft computer's terminal
 
 # Example
 
+videos:
+
+- <https://www.bilibili.com/video/BV1uj411e7fa/>
+-
+
 more examples [here](https://github.com/wefcdse/websocket_control/tree/master/examples)
 
 server side rust code
@@ -63,6 +68,3 @@ and run this on Computer Craft computer's shell:
 ```
 ws_control p1 14111
 ```
-
-![1](res/1.png)
-![2](res/2.png)
